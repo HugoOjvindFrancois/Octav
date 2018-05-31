@@ -1,15 +1,21 @@
 package com.github.hugoojvindfrancois.octav.services;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.util.Log;
+
+import com.github.hugoojvindfrancois.octav.MainActivity;
 
 import java.io.IOException;
 
@@ -28,6 +34,28 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     private int resumePosition;
 
     private AudioManager audioManager;
+
+    //Handle incoming phone calls
+    private boolean ongoingCall = false;
+    private PhoneStateListener phoneStateListener;
+    private TelephonyManager telephonyManager;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        // Perform one-time setup procedures
+
+        // Manage incoming phone calls during playback.
+        // Pause MediaPlayer on incoming call,
+        // Resume on hangup.
+        callStateListener();
+        //ACTION_AUDIO_BECOMING_NOISY -- change in audio outputs -- BroadcastReceiver
+        registerBecomingNoisyReceiver();
+        //Listen for new Audio to play -- BroadcastReceiver
+        register_playNewAudio();
+    }
+
+
 
     //The system calls this method when an activity, requests the service be started
     @Override
@@ -112,7 +140,8 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
 
     @Override
     public void onBufferingUpdate(MediaPlayer mp, int percent) {
-
+        //Invoked indicating buffering status of
+        //a media resource being streamed over the network.
     }
 
     @Override
@@ -142,17 +171,19 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
 
     @Override
     public boolean onInfo(MediaPlayer mp, int what, int extra) {
+        //Invoked to communicate some info.
         return false;
     }
 
     @Override
     public void onPrepared(MediaPlayer mp) {
+        //Invoked when the media source is ready for playback.
         playMedia();
     }
 
     @Override
     public void onSeekComplete(MediaPlayer mp) {
-
+        //Invoked indicating the completion of a seek operation.
     }
 
     @Override
@@ -201,6 +232,80 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
                 audioManager.abandonAudioFocus(this);
     }
 
+    //Handle incoming phone calls
+    private void callStateListener() {
+        // Get the telephony manager
+        telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        //Starting listening for PhoneState changes
+        phoneStateListener = new PhoneStateListener() {
+            @Override
+            public void onCallStateChanged(int state, String incomingNumber) {
+                switch (state) {
+                    //if at least one call exists or the phone is ringing
+                    //pause the MediaPlayer
+                    case TelephonyManager.CALL_STATE_OFFHOOK:
+                    case TelephonyManager.CALL_STATE_RINGING:
+                        if (mediaPlayer != null) {
+                            pauseMedia();
+                            ongoingCall = true;
+                        }
+                        break;
+                    case TelephonyManager.CALL_STATE_IDLE:
+                        // Phone idle. Start playing.
+                        if (mediaPlayer != null) {
+                            if (ongoingCall) {
+                                ongoingCall = false;
+                                resumeMedia();
+                            }
+                        }
+                        break;
+                }
+            }
+        };
+        // Register the listener with the telephony manager
+        // Listen for changes to the device call state.
+        telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+    }
+
+
+    //Becoming noisy
+    private BroadcastReceiver becomingNoisyReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            //pause audio on ACTION_AUDIO_BECOMING_NOISY
+            pauseMedia();
+//            buildNotification(PlaybackStatus.PAUSED);
+        }
+    };
+
+    private void registerBecomingNoisyReceiver() {
+        //register after getting audio focus
+        IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        registerReceiver(becomingNoisyReceiver, intentFilter);
+    }
+
+    private BroadcastReceiver playNewAudio = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            //A PLAY_NEW_AUDIO action received
+            //reset mediaPlayer to play the new Audio
+            mediaFile = intent.getStringExtra("media");
+            stopMedia();
+            mediaPlayer.reset();
+            initMediaPlayer();
+//            updateMetaData();
+//            buildNotification(PlaybackStatus.PLAYING);
+        }
+    };
+
+    private void register_playNewAudio() {
+        //Register playNewMedia receiver
+        IntentFilter filter = new IntentFilter(MainActivity.Broadcast_PLAY_NEW_AUDIO);
+        registerReceiver(playNewAudio, filter);
+    }
+
+
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -209,7 +314,21 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
             mediaPlayer.release();
         }
         removeAudioFocus();
+        //Disable the PhoneStateListener
+        if (phoneStateListener != null) {
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+        }
+
+//        removeNotification();
+
+        //unregister BroadcastReceivers
+        unregisterReceiver(becomingNoisyReceiver);
+        unregisterReceiver(playNewAudio);
+
+        //clear cached playlist
+//        new StorageUtil(getApplicationContext()).clearCachedAudioPlaylist();
     }
+
 
 
 

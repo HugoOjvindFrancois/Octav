@@ -31,6 +31,7 @@ import android.widget.Toast;
 import com.github.hugoojvindfrancois.octav.adapter.SongAdapter;
 import com.github.hugoojvindfrancois.octav.loader.SongLoader;
 import com.github.hugoojvindfrancois.octav.model.Song;
+import com.github.hugoojvindfrancois.octav.services.FloatingViewService;
 import com.github.hugoojvindfrancois.octav.services.MusicService;
 import com.github.hugoojvindfrancois.octav.util.CustomTouchListener;
 import com.github.hugoojvindfrancois.octav.util.onItemClickListener;
@@ -46,6 +47,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
     private static final int CODE_DRAW_OVER_OTHER_APP_PERMISSION = 2084;
+
+    public static final String Broadcast_PLAY_NEW_AUDIO = "com.github.hugoojvindfrancois.octav.PlayNewAudio";
 
     private List<Song> songList;
 
@@ -103,13 +106,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-//        findViewById(R.id.notify_me).setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                startService(new Intent(MainActivity.this, FloatingViewService.class));
-//                finish();
-//            }
-//        });
+        findViewById(R.id.notify_me).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent newIntent = new Intent(MainActivity.this, FloatingViewService.class);
+//                newIntent.putExtra("service", player);
+                startService(newIntent);
+                finish();
+            }
+        });
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -166,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             player = binder.getService();
             serviceBound = true;
 
-            Toast.makeText(MainActivity.this, "Service Bound", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(MainActivity.this, "Service Bound", Toast.LENGTH_SHORT).show();
         }
 
         @Override
@@ -176,6 +181,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     };
 
     private void playAudio(String media) {
+        Dexter.withActivity(this)
+                .withPermission(Manifest.permission.READ_PHONE_STATE)
+                .withListener(new PermissionListener() {
+                    @Override
+                    public void onPermissionGranted(PermissionGrantedResponse response) {
+
+                    }
+
+                    @Override
+                    public void onPermissionDenied(PermissionDeniedResponse response) {
+
+                    }
+
+                    @Override
+                    public void onPermissionRationaleShouldBeShown(PermissionRequest permission, PermissionToken token) {
+
+                    }
+                })
+                .check();
         //Check is service is active
         if (!serviceBound) {
             Intent playerIntent = new Intent(this, MusicService.class);
@@ -184,7 +208,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE);
         } else {
             //Service is active
-            //Send media with BroadcastReceiver
+            //Send a broadcast to the service -> PLAY_NEW_AUDIO
+            Intent broadcastIntent = new Intent(Broadcast_PLAY_NEW_AUDIO);
+            broadcastIntent.putExtra("media", media);
+            sendBroadcast(broadcastIntent);
         }
     }
 

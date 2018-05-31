@@ -63,7 +63,7 @@
                 android:layout_height="30dp"
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="20dp"
-                android:src="@drawable/ic_menu_send"
+                android:src="@mipmap/ic_previous"
                 tools:ignore="ContentDescription"/>
 
             <!--Play button-->
@@ -73,7 +73,7 @@
                 android:layout_height="50dp"
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="10dp"
-                android:src="@drawable/ic_menu_camera"
+                android:src="@mipmap/ic_play"
                 tools:ignore="ContentDescription"/>
 
             <!--Next button-->
@@ -83,7 +83,7 @@
                 android:layout_height="30dp"
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="10dp"
-                android:src="@drawable/ic_menu_slideshow"
+                android:src="@mipmap/ic_play_next"
                 tools:ignore="ContentDescription"/>
 
             <RelativeLayout

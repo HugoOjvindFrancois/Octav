@@ -8,12 +8,12 @@
     tools:context=".MainActivity"
     tools:showIn="@layout/app_bar_drawer">
 
-    <!--<Button-->
-        <!--android:id="@+id/notify_me"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_centerInParent="true"-->
-        <!--android:text="Create Floating Widget" />-->
+    <Button
+        android:id="@+id/notify_me"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="Create Floating Widget" />
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/song_list"

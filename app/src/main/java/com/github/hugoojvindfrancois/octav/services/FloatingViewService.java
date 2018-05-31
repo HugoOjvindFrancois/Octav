@@ -1,7 +1,10 @@
 package com.github.hugoojvindfrancois.octav.services;
 
 import android.app.Service;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
@@ -21,6 +24,8 @@ public class FloatingViewService extends Service {
 
     private WindowManager mWindowManager;
     private View mFloatingView;
+    private MusicService player;
+    private boolean serviceBound;
 
     public FloatingViewService() {
     }
@@ -76,6 +81,7 @@ public class FloatingViewService extends Service {
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 Toast.makeText(FloatingViewService.this, "Playing the song.", Toast.LENGTH_LONG).show();
             }
         });
@@ -173,6 +179,25 @@ public class FloatingViewService extends Service {
         });
     }
 
+
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            MusicService.MusicBinder binder = (MusicService.MusicBinder) service;
+            player = binder.getService();
+            serviceBound = true;
+
+            Toast.makeText(FloatingViewService.this, "Service Bound", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
+
     /**
      * Detect if the floating view is collapsed or expanded.
      *
@@ -186,5 +211,10 @@ public class FloatingViewService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (mFloatingView != null) mWindowManager.removeView(mFloatingView);
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            //service is active
+            player.stopSelf();
+        }
     }
 }
