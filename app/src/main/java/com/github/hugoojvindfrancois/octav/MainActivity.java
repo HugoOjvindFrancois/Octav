@@ -9,7 +9,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.PersistableBundle;
 import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -42,7 +41,7 @@ import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
 
-import java.util.List;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -50,7 +49,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public static final String Broadcast_PLAY_NEW_AUDIO = "com.github.hugoojvindfrancois.octav.PlayNewAudio";
 
-    private List<Song> songList;
+    private ArrayList<Song> songList;
 
     private MusicService player;
 
@@ -147,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 })
                 .check();
 
-        songList = SongLoader.getAllSongs(MainActivity.this);
+        songList = SongLoader.getAllSongs(this);
         recyclerView = findViewById(R.id.song_list);
         final SongAdapter songAdapter = new SongAdapter(songList);
         recyclerView.setAdapter(songAdapter);
@@ -157,7 +156,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         recyclerView.addOnItemTouchListener(new CustomTouchListener(this, new onItemClickListener() {
             @Override
             public void onClick(View view, int index) {
-                playAudio(songAdapter.getSongAt(index).data);
+                playAudio(index);
             }
         }));
     }
@@ -180,7 +179,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     };
 
-    private void playAudio(String media) {
+    private void playAudio(int songIndex) {
         Dexter.withActivity(this)
                 .withPermission(Manifest.permission.READ_PHONE_STATE)
                 .withListener(new PermissionListener() {
@@ -203,14 +202,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         //Check is service is active
         if (!serviceBound) {
             Intent playerIntent = new Intent(this, MusicService.class);
-            playerIntent.putExtra("media", media);
+            playerIntent.putParcelableArrayListExtra("songs", songList);
+            playerIntent.putExtra("songIndex", songIndex);
             startService(playerIntent);
             bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE);
         } else {
             //Service is active
             //Send a broadcast to the service -> PLAY_NEW_AUDIO
             Intent broadcastIntent = new Intent(Broadcast_PLAY_NEW_AUDIO);
-            broadcastIntent.putExtra("media", media);
+            broadcastIntent.putExtra("songIndex", songIndex);
             sendBroadcast(broadcastIntent);
         }
     }
